@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Huffman Coding Visualizer (Ultimate)</title>
+<style>
+:root{--bg:#0b1220;--card:#121a2b;--accent:#00e5ff;--text:#e6f1ff}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,system-ui;background:linear-gradient(135deg,#0b1220,#0f1b33);color:var(--text)}
+header{padding:15px;display:flex;justify-content:space-between;flex-wrap:wrap}
+input{padding:10px;border-radius:10px;border:1px solid #243458;background:#0f1730;color:#fff}
+button{padding:10px;border-radius:10px;border:none;background:var(--accent);cursor:pointer}
+.container{max-width:1200px;margin:auto;padding:10px}
+.panel{background:var(--card);padding:12px;margin-top:10px;border-radius:12px}
+#canvasWrap{height:450px;overflow:hidden;position:relative}
+svg{width:100%;height:100%;cursor:grab}
+.node{fill:#0f1730;stroke:#00e5ff;stroke-width:2}
+.highlight{stroke:#ffcc00;stroke-width:4}
+.label{fill:white;font-size:12px;text-anchor:middle}
+.edge{stroke:#5aa9ff;stroke-width:2}
+.edgeText{fill:#9bd0ff;font-size:11px}
+.hidden{display:none}
+.chip{padding:6px 10px;border:1px solid #27406e;border-radius:999px;margin:4px;display:inline-block}
+</style>
+</head>
+<body>
+<header>
+<h2>🔥 Huffman Visualizer</h2>
+<div>
+<input id="textInput" placeholder="Enter text" />
+<button onclick="start()">Animate</button>
+<button onclick="instant()">Instant</button>
+<button onclick="encodeText()">Encode</button>
+<button onclick="decodeText()">Decode Visual</button>
+</div>
+</header>
+
+<div class="container">
+<div class="panel" id="stats">Stats: —</div>
+<div class="panel" id="canvasWrap"><svg id="svg"></svg></div>
+<div class="panel"><div id="codes"></div></div>
+</div>
+
+<script>
+const svg=document.getElementById('svg');
+let currentRoot=null;
+
+function buildPQ(text){let f={};for(let c of text)f[c]=(f[c]||0)+1;let arr=Object.entries(f).map(([c,v])=>({char:c,freq:v,l:null,r:null}));arr.sort((a,b)=>a.freq-b.freq);return arr;}
+function mergeOnce(arr){let a=arr.shift(),b=arr.shift();let n={char:a.char+b.char,freq:a.freq+b.freq,l:a,r:b};arr.push(n);arr.sort((x,y)=>x.freq-y.freq);return n;}
+function codes(root){let c={};(function dfs(n,s){if(!n.l&&!n.r)c[n.char]=s||'0';if(n.l)dfs(n.l,s+'0');if(n.r)dfs(n.r,s+'1')})(root,'');return c;}
+function layout(root){let x=0;function dfs(n,d){if(!n)return;if(n.l)dfs(n.l,d+1);n.x=x*60+40;n.y=d*80+40;x++;if(n.r)dfs(n.r,d+1);}dfs(root,0)}
+function draw(root){svg.innerHTML='';(function walk(n){if(!n)return;if(n.l){line(n,n.l,'0');walk(n.l);}if(n.r){line(n,n.r,'1');walk(n.r);}node(n)})(root)}
+function line(a,b,l){let e=document.createElementNS('http://www.w3.org/2000/svg','line');e.setAttribute('x1',a.x);e.setAttribute('y1',a.y);e.setAttribute('x2',b.x);e.setAttribute('y2',b.y);e.setAttribute('class','edge');svg.appendChild(e)}
+function node(n){let c=document.createElementNS('http://www.w3.org/2000/svg','circle');c.setAttribute('cx',n.x);c.setAttribute('cy',n.y);c.setAttribute('r',16);c.setAttribute('class','node');c.id='node-'+n.freq+'-'+Math.random();let t=document.createElementNS('http://www.w3.org/2000/svg','text');t.setAttribute('x',n.x);t.setAttribute('y',n.y);t.setAttribute('class','label');t.textContent=n.freq;svg.appendChild(c);svg.appendChild(t)}
+
+function renderCodes(c){let el=document.getElementById('codes');el.innerHTML='';for(let k in c){let d=document.createElement('div');d.className='chip';d.innerText=k+":"+c[k];el.appendChild(d)}}
+
+async function start(){let t=document.getElementById('textInput').value;if(!t)return;let arr=buildPQ(t);while(arr.length>1){let n=mergeOnce(arr);layout(n);draw(n);await new Promise(r=>setTimeout(r,500));}currentRoot=arr[0];layout(currentRoot);draw(currentRoot);let c=codes(currentRoot);renderCodes(c);showStats(t,c)}
+function instant(){let t=document.getElementById('textInput').value;if(!t)return;let arr=buildPQ(t);while(arr.length>1)mergeOnce(arr);currentRoot=arr[0];layout(currentRoot);draw(currentRoot);let c=codes(currentRoot);renderCodes(c);showStats(t,c)}
+
+function encodeText(){let t=document.getElementById('textInput').value;let arr=buildPQ(t);while(arr.length>1)mergeOnce(arr);let c=codes(arr[0]);let res="";for(let ch of t)res+=c[ch];alert("Encoded: "+res)}
+
+async function decodeText(){let t=document.getElementById('textInput').value;if(!t)return;let arr=buildPQ(t);while(arr.length>1)mergeOnce(arr);let root=arr[0];let c=codes(root);
+let encoded="";for(let ch of t)encoded+=c[ch];
+
+let node=root;let decoded="";
+for(let bit of encoded){
+  node = bit==='0'?node.l:node.r;
+  highlight(node);
+  await new Promise(r=>setTimeout(r,400));
+  if(!node.l && !node.r){
+    decoded+=node.char;
+    node=root;
+  }
+}
+alert("Decoded: "+decoded);
+}
+
+function highlight(n){draw(currentRoot);let circles=svg.querySelectorAll('circle');circles.forEach(c=>{
+  let cx=c.getAttribute('cx');
+  let cy=c.getAttribute('cy');
+  if(cx==n.x && cy==n.y){c.classList.add('highlight');}
+});}
+
+function showStats(text,c){let bits=text.length*8;let enc=0;for(let ch of text)enc+=c[ch].length;document.getElementById('stats').innerText=`Original: ${bits} bits | Encoded: ${enc} bits | Saved: ${bits-enc}`}
+</script>
+</body>
+</html>
