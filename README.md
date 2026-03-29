@@ -39,7 +39,7 @@ This project demonstrates:
 
 ## 📸 Demo
 
-> Add screenshots or screen recording here (recommended)
+
  <img width="1919" height="973" alt="image" src="https://github.com/user-attachments/assets/63c652bc-0e49-46fe-8b51-0dcf1e1fcfbf" />
 
 ---
